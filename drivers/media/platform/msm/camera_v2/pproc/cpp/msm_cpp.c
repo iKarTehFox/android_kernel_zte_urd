@@ -2219,12 +2219,21 @@ static int msm_cpp_cfg_frame(struct cpp_device *cpp_dev,
 		return -EINVAL;
 	}
 
-	if ((stripe_base + new_frame->num_strips * stripe_size + 1) !=
+	/*
+	 * Z981: accept any frame message long enough to cover the range
+	 * the kernel reads (stripe_base + stripe_size * num_strips).
+	 * The prebuilt HAL sends a different length per firmware version
+	 * (303 with fw v1.4.0, 627 with fw v1.6.0) and neither matches the
+	 * device-tree formula exactly. The kernel never indexes past
+	 * i1+i2, so a longer payload is harmless; only a too-short one
+	 * would read past the end of the buffer.
+	 */
+	if ((stripe_base + new_frame->num_strips * stripe_size) >
 		new_frame->msg_len) {
-		pr_err("Invalid frame message,len=%d,expected=%d\n",
+		pr_err("Invalid frame message,len=%d,expected>=%d\n",
 			new_frame->msg_len,
 			(stripe_base +
-			new_frame->num_strips * stripe_size + 1));
+			new_frame->num_strips * stripe_size));
 		return -EINVAL;
 	}
 
